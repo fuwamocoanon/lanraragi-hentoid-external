@@ -68,10 +68,60 @@ options you want:
 - **Whole library:** **Batch operations → Use a plugin to pull metadata → Hentoid External Sidecar.**
   This saves automatically and appends to existing tags (so things like `date_added:` are preserved).
 
+## Companion tool: `pack_folders.py` (folder → CBZ)
+
+**Meant to be used alongside this plugin.** LANraragi only ingests archive *files* — its
+library scanner skips loose image folders entirely. So if some of your books are plain folders:
+
+```
+[Title]/1.png
+[Title]/2.png
+[Title]/contentV2.json
+```
+
+LANraragi won't see them at all, and there's nothing for a metadata plugin to attach to. The
+included `pack_folders.py` zips each such folder into `[Title].cbz`. Because the Hentoid
+`contentV2.json` lives inside the folder, it ends up **inside the archive**, which this plugin then
+reads via its embedded-JSON path — so the two work hand in hand.
+
+It's a single Python 3 script, standard library only (no `pip install`), cross-platform.
+
+```bash
+# 1. Preview (writes/deletes nothing)
+python pack_folders.py "/path/to/loose/folders" --dry-run
+
+# 2. Pack for real
+python pack_folders.py "/path/to/loose/folders"
+```
+
+**What to do with the originals** — pick one:
+
+| You want…                        | Flag                                  |
+| -------------------------------- | ------------------------------------- |
+| Keep them (default)              | *(nothing)*                           |
+| Move them to a `Done` folder     | `--after move`  (defaults to `<root>/Done`) |
+| Move them to a custom location   | `--after move --done-dir "/some/path"` |
+| Delete them immediately          | `--after delete`  (asks for a typed `yes`) |
+
+Originals are only ever touched **after** a cbz is written *and* verified with a zip integrity
+check, so a failed pack never loses data. `--after delete` additionally requires you to type `yes`.
+
+Other options:
+
+- `--out DIR` — write the `.cbz` files somewhere other than next to each source folder.
+- `--json-mode {embed,sidecar,both}` — keep `contentV2.json` inside the cbz (default `embed`),
+  write a `<name>_h.json` sidecar next to it (`sidecar`), or `both`.
+- `--single` — treat the given folder itself as one book instead of a container of books.
+- `--compress` — Deflate the images (default is store, since they're already compressed).
+- `--overwrite` — replace an existing cbz of the same name instead of skipping it.
+
+Run `python pack_folders.py --help` for the full list.
+
 ## Requirements
 
 - LANraragi (tested on **0.9.81 "Atomica"**).
 - No extra Perl modules beyond what LANraragi already ships.
+- `pack_folders.py` (optional companion) needs **Python 3.8+** — standard library only.
 
 ## License
 
